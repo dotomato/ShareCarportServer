@@ -4,6 +4,10 @@
 from flask import *
 import urllib2
 import time
+import datetime
+import xlrd
+import xlwt
+from xlutils.copy import copy
 
 app = Flask(__name__)
 
@@ -22,14 +26,22 @@ class CarportState:
 
     def open(self):
         # print 'open'
-        urllib2.urlopen(self.openurl).read()
+        # urllib2.urlopen(self.openurl).read()
+        pass
 
     def close(self):
         # print 'close'
-        urllib2.urlopen(self.closeurl).read()
+        # urllib2.urlopen(self.closeurl).read()
+        pass
 
 # 填入车位上的二维码的id、URL
-carlist = [CarportState('111', 'http://xxx.xxx.xxx.xxx:5001/open', 'http://xxx.xxx.xxx.xxx:5001/close')]
+carlist = [CarportState('001002', 'http://xxx.xxx.xxx.xxx:5001/open', 'http://xxx.xxx.xxx.xxx:5001/close')]
+
+rb_data = xlrd.open_workbook('DataBase.xls')
+count_data = int(rb_data.sheet_by_index(0).cell(0, 1).value)
+wb_data = copy(rb_data)
+ws_data = wb_data.get_sheet(0)
+print '目前数据库中共有%d条数据' % count_data
 
 
 def get_carport(id):
@@ -40,8 +52,42 @@ def get_carport(id):
             return None
 
 
+def record(str_time, str_id, str_action, str_info):
+    global count_data
+    count_data += 1
+    str_result = u'%s :第%s号车位,%s，%s' % (str_time, str_id, str_action, str_info)
+    ws_data.write(0, 1, count_data)
+    ws_data.write(count_data + 2, 0, str_time)
+    ws_data.write(count_data + 2, 1, str_id)
+    ws_data.write(count_data + 2, 2, str_action)
+    ws_data.write(count_data + 2, 3, str_info)
+    wb_data.save('DataBase.xls')
+    print str_result
+
+
 @app.route(APIURL + '/enter_car', methods=['POST'])
 def enter_car():
+    data = request.get_data()
+    body = json.loads(data)
+    id = body['id']
+    carport = get_carport(id)
+    if carport is None:
+        result = {'result': 'failed'}
+    else:
+        result = {'result': 'success'}
+        carport.start_time = time.time()
+
+        str_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        str_id = carport.id
+        str_action = u'车辆进入'
+        str_info = u'进入前15分钟免费停车时间'
+        record(str_time, str_id, str_action, str_info)
+
+    return make_response(jsonify(result), 200)
+
+
+@app.route(APIURL + '/comfir_car', methods=['POST'])
+def comfir_car():
     data = request.get_data()
     body = json.loads(data)
     id = body['id']
@@ -51,9 +97,14 @@ def enter_car():
     else:
         result = {'result': 'success'}
         carport.is_empty = False
-        carport.start_time = time.time()
         carport.close()
-        print 'carport has closed ,id=%s' % id
+
+        str_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        str_id = carport.id
+        str_action = u'开始收费'
+        str_info = u'阻档杆升起'
+        record(str_time, str_id, str_action, str_info)
+
     return make_response(jsonify(result), 200)
 
 
@@ -63,13 +114,23 @@ def exit_car():
     body = json.loads(data)
     id = body['id']
     carport = get_carport(id)
-    if carport is None:
+    if carport is None or carport.is_empty:
         result = {'result': 'failed'}
     else:
         result = {'result': 'success'}
         carport.is_empty = True
         carport.open()
-        print 'carport has opened ,id=%s' % id
+        stopTime = int(time.time() - carport.start_time)
+        stopMoney = ((stopTime/60/30) + 1)*5
+
+        carport.close()
+
+        str_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        str_id = carport.id
+        str_action = u'完成付款'
+        str_info = u'阻档杆降下，停车时长%d秒，收费%0.2f元' % (stopTime, stopMoney)
+        record(str_time, str_id, str_action, str_info)
+
     return make_response(jsonify(result), 200)
 
 
@@ -88,4 +149,6 @@ def get_time():
 
 
 if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0', port=5001)
+    import logging
+    logging.basicConfig(level=logging.FATAL)
+    app.run(debug=True, host='0.0.0.0', port=5001, use_reloader=False)

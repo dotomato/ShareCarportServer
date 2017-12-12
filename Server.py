@@ -25,17 +25,15 @@ class CarportState:
         self.start_time = -1
 
     def open(self):
-        # print 'open'
-        # urllib2.urlopen(self.openurl).read()
-        pass
+        urllib2.urlopen(self.openurl).read()
+        # pass
 
     def close(self):
-        # print 'close'
-        # urllib2.urlopen(self.closeurl).read()
-        pass
+        urllib2.urlopen(self.closeurl).read()
+        # pass
 
 # 填入车位上的二维码的id、URL
-carlist = [CarportState('001002', 'http://xxx.xxx.xxx.xxx:5001/open', 'http://xxx.xxx.xxx.xxx:5001/close')]
+carlist = [CarportState('001002', 'http://xxx.xxx.xxx.xxx:xxxx/open', 'http://xxx.xxx.xxx.xxx:xxxx/close')]
 
 rb_data = xlrd.open_workbook('DataBase.xls')
 count_data = int(rb_data.sheet_by_index(0).cell(0, 1).value)

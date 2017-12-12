@@ -52,15 +52,16 @@ def get_carport(id):
             return None
 
 
-def record(str_time, str_id, str_action, str_info):
+def record(str_time, str_id, str_action, str_money, str_info):
     global count_data
     count_data += 1
-    str_result = u'%s :第%s号车位,%s，%s' % (str_time, str_id, str_action, str_info)
+    str_result = u'%s :第%s号车位,%s，费用%s, %s' % (str_time, str_id, str_action, str_money, str_info)
     ws_data.write(0, 1, count_data)
     ws_data.write(count_data + 2, 0, str_time)
     ws_data.write(count_data + 2, 1, str_id)
     ws_data.write(count_data + 2, 2, str_action)
-    ws_data.write(count_data + 2, 3, str_info)
+    ws_data.write(count_data + 2, 3, str_money)
+    ws_data.write(count_data + 2, 4, str_info)
     wb_data.save('DataBase.xls')
     print str_result
 
@@ -80,8 +81,9 @@ def enter_car():
         str_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         str_id = carport.id
         str_action = u'车辆进入'
+        str_money = u'0.00元'
         str_info = u'进入前15分钟免费停车时间'
-        record(str_time, str_id, str_action, str_info)
+        record(str_time, str_id, str_action, str_money, str_info)
 
     return make_response(jsonify(result), 200)
 
@@ -102,8 +104,9 @@ def comfir_car():
         str_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         str_id = carport.id
         str_action = u'开始收费'
+        str_money = u'0.00元'
         str_info = u'阻档杆升起'
-        record(str_time, str_id, str_action, str_info)
+        record(str_time, str_id, str_action, str_money, str_info)
 
     return make_response(jsonify(result), 200)
 
@@ -128,8 +131,9 @@ def exit_car():
         str_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         str_id = carport.id
         str_action = u'完成付款'
-        str_info = u'阻档杆降下，停车时长%d秒，收费%0.2f元' % (stopTime, stopMoney)
-        record(str_time, str_id, str_action, str_info)
+        str_money = u'%0.2f元' % stopMoney
+        str_info = u'阻档杆降下，停车时长%d秒' % stopTime
+        record(str_time, str_id, str_action, str_money, str_info)
 
     return make_response(jsonify(result), 200)
 
